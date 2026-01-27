@@ -1,0 +1,15 @@
+[project]
+name = "nwb-playground"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aind-behavior-vr-foraging[data] == 0.6.4",
+    "hdmf-zarr",
+    "numpy",
+    "pandas",
+    "pydantic-settings>=2.10.1",
+    "pynwb",
+    "scipy",
+]
