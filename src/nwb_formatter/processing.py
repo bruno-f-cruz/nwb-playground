@@ -231,10 +231,11 @@ def parse_reward_metadata(dataset: contraqctor.contract.Dataset) -> pd.DataFrame
     reward_metadata = dataset.at("Behavior").at("SoftwareEvents").at("GiveReward").load().data.copy()
     return reward_metadata
 
+_TSliceable = t.TypeVar("_TSliceable", pd.DataFrame, pd.Series)
 
-def slice_by_time(df: pd.DataFrame, start_time: float, end_time: float) -> pd.DataFrame:
+def slice_by_index(df: _TSliceable, start_time: float, end_time: float) -> _TSliceable:
     """
-    Subsets the DataFrame to only include rows within the specified time range.
+    Subsets the DataFrame to only include rows within the specified range.
     Assumes the DataFrame index is a datetime-like index.
     """
     return df[(df.index >= start_time) & (df.index < end_time)]
@@ -297,20 +298,20 @@ def process_sites(dataset: contraqctor.contract.Dataset) -> list[Site]:
         this_site = vrf_task.VirtualSite(**merged.iloc[i]["data"])
         this_patch = vrf_task.Patch(**merged.iloc[i]["patch_data"])
 
-        site_choice_feedback = slice_by_time(choice_feedback, this_timestamp, next_timestamp)
+        site_choice_feedback = slice_by_index(choice_feedback, this_timestamp, next_timestamp)
         assert len(site_choice_feedback) <= 1, "Multiple speaker choices in site interval"
 
-        site_water_delivery = slice_by_time(water_delivery, this_timestamp, next_timestamp)
+        site_water_delivery = slice_by_index(water_delivery, this_timestamp, next_timestamp)
         assert len(site_water_delivery) <= 1, "Multiple water deliveries in site interval"
 
-        site_odor_onset = slice_by_time(odor_onset, this_timestamp, next_timestamp)
+        site_odor_onset = slice_by_index(odor_onset, this_timestamp, next_timestamp)
         assert len(site_odor_onset) <= 1, "Multiple odor onsets in site interval"
 
-        site_continuous_patch_state = slice_by_time(continuous_patch_state, this_timestamp, next_timestamp).where(
+        site_continuous_patch_state = slice_by_index(continuous_patch_state, this_timestamp, next_timestamp).where(
             continuous_patch_state["PatchId"] == merged.iloc[i]["patch_index"]
         )
 
-        site_patch_state_at_reward = slice_by_time(patch_state_at_reward, this_timestamp, next_timestamp).where(
+        site_patch_state_at_reward = slice_by_index(patch_state_at_reward, this_timestamp, next_timestamp).where(
             patch_state_at_reward["PatchId"] == merged.iloc[i]["patch_index"]
         )
         assert len(site_patch_state_at_reward) <= 1, "Multiple patch states at reward in site interval"
