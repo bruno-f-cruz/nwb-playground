@@ -665,9 +665,9 @@ wheels = [
 ]
 
 [[package]]
-name = "nwb-playground"
+name = "nwb-formatter"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "aind-behavior-vr-foraging", extra = ["data"] },
     { name = "hdmf-zarr" },

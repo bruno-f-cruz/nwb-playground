@@ -1,5 +1,5 @@
 [project]
-name = "nwb-playground"
+name = "nwb_formatter"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -13,3 +13,19 @@ dependencies = [
     "pynwb",
     "scipy",
 ]
+
+[build-system]
+requires = ["uv_build>=0.8.22"]
+build-backend = "uv_build"
+
+
+[tool.ruff]
+line-length = 120
+target-version = 'py311'
+
+[tool.ruff.lint]
+extend-select = ['Q', 'RUF100', 'C90', 'I']
+extend-ignore = []
+mccabe = { max-complexity = 14 }
+pydocstyle = { convention = 'google' }
+ignore= ["E712"]
