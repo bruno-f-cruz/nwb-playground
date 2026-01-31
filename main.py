@@ -2,15 +2,16 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
+import numpy as np
 from aind_behavior_vr_foraging.data_contract import dataset
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 
 from nwb_formatter.models import Site
-from nwb_formatter.processing import process_sites
+from nwb_formatter.processing import DatasetProcessor
 
-dataset_path = Path(r"\\allen\aind\scratch\bruno.cruz\TestMouse_2026-01-24T011822Z")
+dataset_path = Path(r"\\allen\aind\stage\vr-foraging\data\828424\828424_2026-01-30T002044Z")
 ds = dataset(dataset_path)
-processed_sites = process_sites(ds)
+processed_sites = DatasetProcessor(ds).process()
 
 
 # Create a new NWBFile. Most of these are already available via the aind-data-schema
@@ -33,10 +34,19 @@ for field_name, field in Site.model_fields.items():
     nwbfile.add_trial_column(name=field_name, description=field.description)
 
 for site in processed_sites:
-    nwbfile.add_trial(**site.model_dump())
+    trial_data = site.model_dump()
+    # Replace None with np.nan
+    trial_data = {k: (np.nan if v is None else v) for k, v in trial_data.items()}
+    nwbfile.add_trial(**trial_data)
 
-print(nwbfile.trials.to_dataframe())
+a = nwbfile.trials.to_dataframe()
+rewarded_sites = a[a["site_label"] == "RewardSite"]
+patch_a = rewarded_sites[rewarded_sites["patch_label"] == "A"]
+p_choice = patch_a["has_choice"].mean()
+p_reward = patch_a["has_reward"].sum() / len(patch_a)
+print(f"Patch A: P(choice)={p_choice:.2f}, P(reward|choice)={p_reward:.2f}")
+print(a)
 
-io = NWBHDF5IO("basics_tutorial.nwb", mode="w")
-io.write(nwbfile)
-io.close()
+# io = NWBHDF5IO("basics_tutorial.nwb", mode="w")
+# io.write(nwbfile)
+# io.close()

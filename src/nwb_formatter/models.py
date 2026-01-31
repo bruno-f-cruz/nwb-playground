@@ -32,7 +32,6 @@ class Site(BaseModel):
     site_label: str = Field(description="Label of the site")
     friction: float = Field(description="Assigned friction for the site. (unit: percentage)")
     patch_label: str = Field(description="Patch type name")
-    odor_label: str = Field(description="Odor molecule assigned to patch")
     odor_concentration: List[float] = Field(
         description="An array representing the concentration levels of each odor channels. (unit: percentage)"
     )
@@ -46,9 +45,6 @@ class Site(BaseModel):
     )
     odor_onset_time: Optional[float] = Field(
         None, description="Time of odor onset. Will be null if no odor was delivered. (unit: second)"
-    )
-    odor_offset_time: Optional[float] = Field(
-        None, description="Time of odor offset. Will be null if no odor was delivered. (unit: second)"
     )
     reward_onset_time: Optional[float] = Field(None, description="Time when reward was delivered. (unit: second)")
     reward_amount: Optional[float] = Field(None, description="Amount of reward delivered. (unit: milliliter)")
@@ -66,7 +62,6 @@ class Site(BaseModel):
         description="Time when choice cue was delivered. Also can be considered the stop cue. The choice tone is delivered when a stop is successful. (unit: second)",
     )
     has_choice: Optional[bool] = Field(None, description="Defines whether a choice occurred in the site.")
-    has_lick: bool = Field(description="Defines whether a lick occurred in the site.")
     reward_delay_duration: Optional[float] = Field(
         None, description="reward_onset_time - choice_cue_time. (unit: second)"
     )
