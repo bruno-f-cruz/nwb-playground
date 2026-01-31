@@ -16,9 +16,14 @@ logger = logging.getLogger(__name__)
 _TSliceable = t.TypeVar("_TSliceable", pd.DataFrame, pd.Series)
 
 
+class _ParsingError(Exception):
+    pass
+
+
 class DatasetProcessor:
-    def __init__(self, dataset: contraqctor.contract.Dataset) -> None:
+    def __init__(self, dataset: contraqctor.contract.Dataset, *, raise_on_error: bool = True) -> None:
         self.dataset = dataset
+        self.raise_on_error = raise_on_error
 
         if self.dataset_version != self.parser_version:
             logger.warning(
@@ -208,7 +213,6 @@ class DatasetProcessor:
         water_delivery = self._parse_water_delivery(dataset)
         reward_metadata = self._parse_reward_metadata(dataset)
         odor_onset = self._parse_odor_onset(dataset)
-        continuous_patch_state = self._parse_continuous_patch_state(dataset)
         patch_state_at_reward = self._parse_patch_state_at_reward(dataset)
         friction = self._parse_friction(dataset)
         olfactometer_channel_count = self.get_olfactometer_channel_count(dataset)
@@ -244,11 +248,6 @@ class DatasetProcessor:
             if not this_friction.empty:
                 current_friction = this_friction.values[-1]
 
-            site_continuous_patch_state = self.slice_by_index(continuous_patch_state, this_timestamp, next_timestamp)
-            site_continuous_patch_state = site_continuous_patch_state[
-                site_continuous_patch_state["PatchId"] == merged.iloc[i]["patch_index"]
-            ]
-
             site_patch_state_at_reward = self.slice_by_index(patch_state_at_reward, this_timestamp, next_timestamp)
             site_patch_state_at_reward = site_patch_state_at_reward[
                 site_patch_state_at_reward["PatchId"] == merged.iloc[i]["patch_index"]
@@ -277,14 +276,26 @@ class DatasetProcessor:
                 current_site_in_block_idx = 0
 
             choice_time = site_choice_feedback.index[0] if not site_choice_feedback.empty else np.nan
+            if site_odor_onset.empty:
+                if self.raise_on_error:
+                    raise _ParsingError("No odor onset found in site interval")
+                else:
+                    logger.warning("No odor onset found in site interval")
             odor_onset_time = site_odor_onset.index[0] if not site_odor_onset.empty else np.nan
+
             reward_metadata_sliced = self.slice_by_index(reward_metadata, this_timestamp, next_timestamp)
-            if reward_metadata_sliced.empty:
-                reward_onset_time = np.nan  # Just in case there is some manual water delivery we exclude it here
+            if reward_metadata_sliced.empty or reward_metadata_sliced["data"].fillna(0).eq(0).all():
+                # Note: for None or 0 reward metadata there wont be a hardware water delivery event
+                # However, if the experimenter manually triggered a reward around this time, we should not count that
+                # as a reward for this site either, so we make an explicit decision to set reward_onset_time to nan
+                reward_onset_time = np.nan
             else:
                 if len(site_water_delivery) == 0:
-                    logger.warning("Reward metadata found but no water delivery in site interval")
-                    reward_onset_time = np.nan
+                    if self.raise_on_error:
+                        raise _ParsingError("Valid reward metadata found but no water delivery in site interval")
+                    else:
+                        logger.warning("Valid reward metadata found but no water delivery in site interval")
+                        reward_onset_time = np.nan
                 elif len(reward_metadata_sliced) > 1:
                     logger.warning("Multiple reward metadata entries in site interval...Using first one")
                     reward_onset_time = site_water_delivery.index[0]
