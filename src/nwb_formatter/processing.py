@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 _TSliceable = t.TypeVar("_TSliceable", pd.DataFrame, pd.Series)
 
 
-class _ParsingError(Exception):
+class _DatasetProcessorError(Exception):
     pass
 
 
@@ -276,12 +276,23 @@ class DatasetProcessor:
                 current_site_in_block_idx = 0
 
             choice_time = site_choice_feedback.index[0] if not site_choice_feedback.empty else np.nan
-            if site_odor_onset.empty:
-                if self.raise_on_error:
-                    raise _ParsingError("No odor onset found in site interval")
+
+            if site_odor_onset.empty and this_site["odor_specification"] is not None:
+                # Sometimes the timestamp for the odor onset arrives slightly before the site. We should investigate
+                # but for now we just log a warning and use the site onset instead after checking if this is the issue
+                odor_onset_before_site = odor_onset[
+                    (odor_onset.index < this_timestamp) & (odor_onset.index >= this_timestamp - 0.002)
+                ]  # we use a 2ms conservative window
+                if odor_onset_before_site.empty:
+                    if self.raise_on_error:
+                        raise _DatasetProcessorError("No odor onset found in site interval")
+                    else:
+                        logger.warning("No odor onset found in site interval")
                 else:
-                    logger.warning("No odor onset found in site interval")
-            odor_onset_time = site_odor_onset.index[0] if not site_odor_onset.empty else np.nan
+                    logger.warning("Odor onset found slightly (<2ms) before site interval, using site onset instead")
+                    odor_onset_time = this_timestamp
+            else:
+                odor_onset_time = site_odor_onset.index[0] if not site_odor_onset.empty else np.nan
 
             reward_metadata_sliced = self.slice_by_index(reward_metadata, this_timestamp, next_timestamp)
             if reward_metadata_sliced.empty or reward_metadata_sliced["data"].fillna(0).eq(0).all():
@@ -292,7 +303,9 @@ class DatasetProcessor:
             else:
                 if len(site_water_delivery) == 0:
                     if self.raise_on_error:
-                        raise _ParsingError("Valid reward metadata found but no water delivery in site interval")
+                        raise _DatasetProcessorError(
+                            "Valid reward metadata found but no water delivery in site interval"
+                        )
                     else:
                         logger.warning("Valid reward metadata found but no water delivery in site interval")
                         reward_onset_time = np.nan

@@ -9,7 +9,7 @@ from pynwb import NWBFile
 from nwb_formatter.models import Site
 from nwb_formatter.processing import DatasetProcessor
 
-dataset_path = Path(r"\\allen\aind\stage\vr-foraging\data\828424\828424_2026-01-30T002044Z")
+dataset_path = Path(r"\\allen\aind\stage\vr-foraging\data\828424\828424_2026-01-31T001737Z")
 ds = dataset(dataset_path)
 processed_sites = DatasetProcessor(ds).process()
 
@@ -41,11 +41,11 @@ for site in processed_sites:
 
 a = nwbfile.trials.to_dataframe()
 rewarded_sites = a[a["site_label"] == "RewardSite"]
-patch_a = rewarded_sites[rewarded_sites["patch_label"] == "A"]
-p_choice = patch_a["has_choice"].mean()
-p_reward = patch_a["has_reward"].sum() / len(patch_a)
-print(f"Patch A: P(choice)={p_choice:.2f}, P(reward|choice)={p_reward:.2f}")
-print(a)
+for patch_id in rewarded_sites["patch_label"].unique():
+    patch_data = rewarded_sites[rewarded_sites["patch_label"] == patch_id]
+    p_choice = patch_data["has_choice"].mean()
+    p_reward = patch_data["has_reward"].sum() / len(patch_data)
+    print(f"Patch {patch_id}: P(choice)={p_choice:.2f}, P(reward|choice)={p_reward:.2f}")
 
 # io = NWBHDF5IO("basics_tutorial.nwb", mode="w")
 # io.write(nwbfile)
